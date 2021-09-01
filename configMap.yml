@@ -1,0 +1,33 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: client-script
+  namespace: iperf
+data:
+  client.sh: |+
+    #!/bin/sh
+
+    set -eu
+
+    TOKEN=$(cat /run/secrets/kubernetes.io/serviceaccount/token)
+    NAMESPACE=$( cat /run/secrets/kubernetes.io/serviceaccount/namespace )
+
+    currentpod=$( \
+      curl -sk \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H 'Accept: application/json' \
+        https://kubernetes.default.svc/api/v1/namespaces/${NAMESPACE}/pods/${HOSTNAME} | \
+          jq -r '.metadata.name + " " + .status.podIP + " " + .status.hostIP + " " + .spec.nodeName' );
+
+    CURRENTNODE=$(echo ${currentpod} | cut -d\  -f4)
+
+      curl -sk \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H 'Accept: application/json' \
+        https://kubernetes.default.svc/api/v1/namespaces/${NAMESPACE}/pods | \
+          jq -r '.items[] | select(.metadata.name != "'$HOSTNAME'") | .metadata.name + " " + .status.podIP + " " + .status.hostIP + " " + .spec.nodeName' | while read PODNAME PODIP NODEIP NODENAME; do
+
+      echo Pod-to-Pod network throughput from ${CURRENTNODE} to ${NODENAME}
+      iperf3 -Vc $PODIP -P 20
+
+    done
