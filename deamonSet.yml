@@ -1,0 +1,58 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: iperf3
+  namespace: iperf
+  labels:
+    k8s-app: iperf3
+spec:
+  selector:
+    matchLabels:
+      name: iperf3
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: iperf3
+    spec:
+      restartPolicy: Always
+      serviceAccountName: pipeline
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      securityContext: {}
+      containers:
+        - name: iperf3
+          image: 'quay.io/fcarrus/rhel-iperf3:latest'
+          command:
+            - iperf3
+            - '-s'
+          resources: {}
+          volumeMounts:
+            - name: client-script
+              mountPath: /iperf3
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      serviceAccount: pipeline
+      volumes:
+        - name: client-script
+          configMap:
+            name: client-script
+            defaultMode: 420
+      dnsPolicy: ClusterFirst
+      tolerations:
+        - key: node-role.kubernetes.io/infra
+          operator: Exists
+          effect: NoSchedule
+        - key: node.ocs.openshift.io/storage
+          operator: Equal
+          value: 'true'
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  revisionHistoryLimit: 10
