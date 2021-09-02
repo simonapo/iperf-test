@@ -28,6 +28,6 @@ data:
           jq -r '.items[] | select(.metadata.name != "'$HOSTNAME'") | .metadata.name + " " + .status.podIP + " " + .status.hostIP + " " + .spec.nodeName' | while read PODNAME PODIP NODEIP NODENAME; do
 
       echo Pod-to-Pod network throughput from ${CURRENTNODE} to ${NODENAME}
-      iperf3 -Vc $PODIP -P 20
+      iperf3 -Vc $PODIP -P 5
 
     done
